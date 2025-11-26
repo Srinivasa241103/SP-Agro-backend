@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from 'cookie-parser';
 import './db/pool.js';
 import googleAuthRoute from './routes/googleAuth.js';
+import productRouter from './routes/productRoutes.js';
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.use(cors(corsOptions));
 
 
 // basic configuratioins
-app.use(express.json({limit: '16kb'}));
+app.use(express.json({ limit: '16kb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
@@ -28,5 +29,6 @@ app.use(express.static('public'));
 
 // Auth routes
 app.use('/auth', googleAuthRoute);
+app.use('/products', productRouter);
 
 export default app;

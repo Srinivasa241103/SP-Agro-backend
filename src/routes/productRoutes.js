@@ -1,5 +1,8 @@
 import Router from "express";
+import { getProductsForDashboard } from "../controller/products.js";
 
-const router = new Router();
+const router = Router();
 
-router.get('/get-products', getProductsForDashboard);
+router.get("/get-products", getProductsForDashboard);
+
+export default router;

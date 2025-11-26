@@ -1,4 +1,4 @@
-import { ProductService } from '../service/productService.js';
+import ProductService from '../service/productService.js';
 
 const productService = new ProductService();
 
@@ -21,6 +21,7 @@ export const getProductsForDashboard = async (req, res) => {
         });
 
     } catch (err) {
+        console.error("Error in getProductsForDashboard:", err);
         return res.status(500).json({
             success: false,
             message: "Internal server error"
