@@ -1,37 +1,38 @@
-import { pool } from "../config/db.js";
+import { pool } from "./pool.js";
 
 export default class CartRepository {
     async getActiveCartByUserId(userId) {
         const query = `SELECT c.id            AS cartId
                         FROM carts c
-                        WHERE c.user_id = ?
-                        AND c.deleted_at IS NULL
+                        WHERE c.user_id = $1
+                        AND c.deleted_on IS NULL
                         ORDER BY c.id DESC
                         LIMIT 1
                         `;
-        const [rows] = await pool.query(query, [userId]);
-        return rows[0];
+        const result = await pool.query(query, [userId]);
+        return result.rows[0];
     }
 
     async getActiveCartBySessionId(sessionId) {
         const query = `SELECT c.id            AS cartId
                         FROM carts c
-                        WHERE c.session_id = ?
-                        AND c.deleted_at IS NULL
+                        WHERE c.session_id = $1
+                        AND c.deleted_on IS NULL
                         AND (c.expires_at IS NULL OR c.expires_at > NOW())
                         ORDER BY c.id DESC
                         LIMIT 1
                         `;
-        const [rows] = await pool.query(query, [sessionId]);
-        return rows[0];
+        const result = await pool.query(query, [sessionId]);
+        return result.rows[0];
     }
 
     async createCartForUser(userId) {
         const query = `INSERT INTO carts (user_id, created_at, updated_at)
-                        VALUES (?, NOW(), NOW())
+                        VALUES ($1, NOW(), NOW())
+                        RETURNING id AS "cartId"
                         `;
-        const [result] = await pool.query(query, [userId]);
-        return { cartId: result.insertId };
+        const result = await pool.query(query, [userId]);
+        return result.rows[0];
     }
 
     async createCartForGuest(sessionId) {
@@ -39,10 +40,11 @@ export default class CartRepository {
         expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from now
 
         const query = `INSERT INTO carts (session_id, expires_at, created_at, updated_at)
-                        VALUES (?, ?, NOW(), NOW())
+                        VALUES ($1, $2, NOW(), NOW())
+                        RETURNING id AS "cartId"
                         `;
-        const [result] = await pool.query(query, [sessionId, expiresAt]);
-        return { cartId: result.insertId };
+        const result = await pool.query(query, [sessionId, expiresAt]);
+        return result.rows[0];
     }
 
     async getCartItemsByCartId(cartId) {
@@ -55,15 +57,15 @@ export default class CartRepository {
                         ci.quantity                      AS itemQuantity,
                         CASE WHEN inv.quantity >= ci.quantity THEN TRUE
                             ELSE FALSE
-                        END                              AS inStock
+                        END                              AS "inStock"
                         FROM cart_items ci
                         JOIN products pr ON ci.product_id = pr.id
                         LEFT JOIN product_images pi ON pr.id = pi.product_id AND pi.is_primary = 1
                         JOIN inventories inv ON pr.id = inv.product_id
-                        WHERE ci.cart_id = ?
+                        WHERE ci.cart_id = $1
                         AND ci.deleted_at IS NULL;
                         `;
-        const [rows] = await pool.query(query, [cartId]);
-        return rows;
+        const result = await pool.query(query, [cartId]);
+        return result.rows;
     }
 }

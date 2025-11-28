@@ -4,10 +4,10 @@ export class UserRepository {
     async checkUserExistsById(id) {
         const query = `
             SELECT 1 FROM users 
-            WHERE email = $1 
+            WHERE id = $1 
             LIMIT 1
         `;
-        const result = await pool.query(query, [email]);
+        const result = await pool.query(query, [id]);
         if (result.rowCount > 0) return true;
         return false;
     }
@@ -17,7 +17,7 @@ export class UserRepository {
                 name        AS userName,
                 phone       AS userPhone,
                 email       AS userEmail,
-                avatar_url  AS userAvatarUrl,
+                avatar_url  AS userAvatarUrl
                 FROM users 
             WHERE id = $1
             LIMIT 1

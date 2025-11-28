@@ -1,47 +1,59 @@
 import CartService from "../service/cartService.js";
 
 const cartService = new CartService();
-
 export const getCarts = async (req, res) => {
     try {
-        const cartOwner = req.cartOwner;
-
-        if (!cartOwner) {
-            return res.status(401).json({
-                success: false,
-                message: "Cart owner information missing"
-            });
-        }
-
+        const cartOwnerDetails = req.cartOwner;;
         const responseBody = {
             success: false,
             message: "",
             cartData: {}
         }
-
-        const cartData = await cartService.getCartDetailsByOwner(cartOwner);
-
+        const cartData = await cartService.getCartDetailsByOwner(cartOwnerDetails);
         if (!cartData?.cartId) {
-            responseBody.message = "Cart is empty";
-            responseBody.cartData = {
-                cartId: null,
-                subTotal: 0,
-                cartItems: [],
-                ownerType: cartOwner.type
-            };
+            responseBody.message = "No Cart Found";
             return res.status(200).json(responseBody);
         }
-
         responseBody.success = true;
-        responseBody.message = cartOwner.type === 'guest'
-            ? "Guest cart data fetched successfully"
-            : "Cart data fetched successfully";
+        responseBody.message = "Cart Data Fetched";
         responseBody.cartData = cartData;
 
         return res.status(200).json(responseBody);
 
     } catch (error) {
-        console.error("Error fetching cart:", error);
+        console.log(error);
+        return res.status(500).json({
+            message: "Internal Server Error"
+        })
+    }
+}
+
+export const addToCart = async (req, res) => {
+    const cartOwnerDetails = req.cartOwner;
+    const { productId, quantity } = req.body;
+
+    if (!productId || !quantity) {
+        return res.status(400).json({
+            success: false,
+            message: "productId and quantity are required"
+        })
+    }
+
+    const productDetails = {
+        cartOwnerDetails,
+        productId,
+        quantity
+    }
+
+    try {
+        const responseBody = {
+            success: false,
+            message: ""
+        }
+        const cartResponse = await cartService.addToCart(productDetails);
+
+    } catch (err) {
+        console.log(err);
         return res.status(500).json({
             success: false,
             message: "Internal Server Error"

@@ -32,6 +32,16 @@ class ProductRepository {
         const { rows } = await pool.query(query);
         return rows;
     }
+
+    async getProductInventory(productId) {
+        const query = `
+            SELECT 
+                available_quantity   AS availableQuantity
+            FROM inventory
+            WHERE product_id = $1;`;
+        const { rows } = await pool.query(query, [productId]);
+        return rows[0];
+    }
 }
 
 export default ProductRepository;

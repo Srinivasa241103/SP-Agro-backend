@@ -1,8 +1,10 @@
 import CartRepository from "../db/cartRepository.js";
+import ProductRepository from "../db/productRepository.js";
 
 export default class CartService {
     constructor() {
         this.cartRepo = new CartRepository();
+        this.productRepo = new ProductRepository();
     }
 
     async getCartDetailsByOwner(cartOwner) {
@@ -14,24 +16,10 @@ export default class CartService {
         }
 
         let userCart;
-
-        // Find or Create Cart based on owner type
         if (cartOwner.type === 'user') {
-            // Query: WHERE user_id = cartOwner.userId
             userCart = await this.cartRepo.getActiveCartByUserId(cartOwner.userId);
-
-            // Create: INSERT (user_id) if not found
-            if (!userCart) {
-                userCart = await this.cartRepo.createCartForUser(cartOwner.userId);
-            }
         } else if (cartOwner.type === 'guest') {
-            // Query: WHERE session_id = cartOwner.sessionId
             userCart = await this.cartRepo.getActiveCartBySessionId(cartOwner.sessionId);
-
-            // Create: INSERT (session_id, expires_at) if not found
-            if (!userCart) {
-                userCart = await this.cartRepo.createCartForGuest(cartOwner.sessionId);
-            }
         }
 
         if (!userCart?.cartId) {
@@ -45,7 +33,6 @@ export default class CartService {
             return returnObject;
         }
 
-        // Calculate subtotal
         for (const item of cartItems) {
             const price = (item.itemSalePrice && item.itemSalePrice > 0)
                 ? item.itemSalePrice
@@ -53,7 +40,6 @@ export default class CartService {
             returnObject.subTotal += price * item.itemQuantity;
         }
 
-        // Ensure subtotal is not negative
         if (returnObject.subTotal < 0) {
             returnObject.subTotal = 0;
         }
@@ -61,5 +47,51 @@ export default class CartService {
         returnObject.cartItems = cartItems;
         returnObject.cartId = userCart.cartId;
         return returnObject;
+    }
+
+    async addToCart(productDetails) {
+        const returnObject = {
+            message: " ",
+            success: false,
+            cartId: null
+        }
+
+        const cartOwnerDetails = productDetails.cartOwnerDetails;
+        const productId = productDetails.productId;
+        const quantity = productDetails.quantity;
+
+        let cartId;
+        if (cartOwnerDetails.type === 'user') {
+            const userCart = await this.cartRepo.getActiveCartByUserId(cartOwnerDetails.userId);
+            if (!userCart?.cartId) {
+                const newCartId = await this.cartRepo.createCartForUser(cartOwnerDetails.userId);
+                cartId = newCartId;
+            } else {
+                cartId = userCart.cartId;
+            }
+        } else if (cartOwnerDetails.type === 'guest') {
+            const userCart = await this.cartRepo.getActiveCartBySessionId(cartOwnerDetails.sessionId);
+            if (!userCart?.cartId) {
+                const newCartId = await this.cartRepo.createCartForGuest(cartOwnerDetails.sessionId);
+                cartId = newCartId;
+            } else {
+                cartId = userCart.cartId;
+            }
+        }
+
+        const addToCartOptions = {
+            productId,
+            quantity,
+            cartId
+        }
+
+        const availableQuantity = await this.productRepo.getProductInventory(productId);
+        if (availableQuantity < quantity) {
+            returnObject.message = "Not enough stock available";
+            return returnObject;
+        }
+
+
+
     }
 }
