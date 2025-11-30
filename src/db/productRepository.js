@@ -36,11 +36,21 @@ class ProductRepository {
     async getProductInventory(productId) {
         const query = `
             SELECT 
-                available_quantity   AS availableQuantity
+                available_quantity   AS "availableQuantity"
             FROM inventory
             WHERE product_id = $1;`;
         const { rows } = await pool.query(query, [productId]);
-        return rows[0];
+        return rows[0]?.availableQuantity || 0;
+    }
+
+    async getProductPrice(productId) {
+        const query = `
+            SELECT 
+                sale_price   AS "productSalePrice"
+            FROM products
+            WHERE id = $1;`;
+        const { rows } = await pool.query(query, [productId]);
+        return rows[0]?.productSalePrice || 0;
     }
 }
 

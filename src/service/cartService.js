@@ -59,8 +59,20 @@ export default class CartService {
         const cartOwnerDetails = productDetails.cartOwnerDetails;
         const productId = productDetails.productId;
         const quantity = productDetails.quantity;
+        const availableQuantity = await this.productRepo.getProductInventory(productId);
+        const itemPrice = await this.productRepo.getProductPrice(productId);
 
-        let cartId;
+        if (!itemPrice) {
+            returnObject.message = "Product not found";
+            return returnObject;
+        }
+
+        if (availableQuantity < quantity) {
+            returnObject.message = "Not enough stock available";
+            return returnObject;
+        }
+
+        let cartId, isUpdated, isAddedToCart;
         if (cartOwnerDetails.type === 'user') {
             const userCart = await this.cartRepo.getActiveCartByUserId(cartOwnerDetails.userId);
             if (!userCart?.cartId) {
@@ -84,14 +96,39 @@ export default class CartService {
             quantity,
             cartId
         }
-
-        const availableQuantity = await this.productRepo.getProductInventory(productId);
-        if (availableQuantity < quantity) {
-            returnObject.message = "Not enough stock available";
-            return returnObject;
+        if (cartId) {
+            const cartItems = await this.cartRepo.getCartItemsByCartId(cartId);
+            if (!cartItems.length) {
+                isAddedToCart = await this.cartRepo.addCartItem(addToCartOptions);
+                returnObject.success = true;
+                returnObject.message = "Product added to cart";
+                returnObject.cartId = cartId;
+            }
+            else {
+                const existingCartItem = cartItems.find((item) => item.productId === productId);
+                if (existingCartItem) {
+                    isUpdated = await this.cartRepo.updateCartItem({
+                        itemQuantity: existingCartItem.itemQuantity + quantity,
+                        cartItemId: existingCartItem.cartItemId
+                    });
+                    returnObject.success = true;
+                    returnObject.message = "Product added to cart";
+                    returnObject.cartId = cartId;
+                }
+            }
         }
 
+        if (!isAddedToCart && !isUpdated) {
+            isAddedToCart = await this.cartRepo.addCartItem(addToCartOptions);
+        }
+        const updatedPrice = await this.cartRepo.updateCartPrice(cartId);
+        if ((!isAddedToCart && !isUpdated) || !updatedPrice) {
+            returnObject.message = "Failed to add product to cart";
+        }
 
-
+        returnObject.success = true;
+        returnObject.message = "Product added to cart";
+        returnObject.cartId = cartId;
+        return returnObject;
     }
 }

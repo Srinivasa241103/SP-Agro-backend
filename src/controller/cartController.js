@@ -32,10 +32,10 @@ export const addToCart = async (req, res) => {
     const cartOwnerDetails = req.cartOwner;
     const { productId, quantity } = req.body;
 
-    if (!productId || !quantity) {
+    if (!productId || !quantity || quantity < 1) {
         return res.status(400).json({
             success: false,
-            message: "productId and quantity are required"
+            message: "Invalid product details"
         })
     }
 
@@ -51,7 +51,15 @@ export const addToCart = async (req, res) => {
             message: ""
         }
         const cartResponse = await cartService.addToCart(productDetails);
-
+        if (!cartResponse.success) {
+            responseBody.success = false;
+            responseBody.message = cartResponse.message;
+            return res.status(200).json(responseBody);
+        }
+        responseBody.success = true;
+        responseBody.message = cartResponse.message;
+        responseBody.cartId = cartResponse.cartId;
+        return res.status(200).json(responseBody);
     } catch (err) {
         console.log(err);
         return res.status(500).json({
